@@ -85,6 +85,9 @@ def download_timestep(timestep_info: dict, download_dir: str):
     )
 
 
+##########################################################################
+
+
 with prefect.Flow(name="aws-gfs-download") as flow:
     date_day = prefect.Parameter("date_day", default="20201215")
     run = prefect.Parameter("run", default=0)
@@ -104,10 +107,17 @@ with prefect.Flow(name="aws-gfs-download") as flow:
             task_args={'name': f'timestep_{timestep}_download'}
         )
 
+
+# For choosing the right executor,
+# see https://docs.prefect.io/orchestration/flow_config/executors.html#choosing-an-executor
 flow.executor = LocalDaskExecutor(
     scheduler="threads",
     num_workers=16
 )
+
+
+##########################################################################
+
 
 if __name__ == "__main__":
     cmd = "run"
