@@ -2,11 +2,13 @@ import os
 import datetime
 import logging
 import sys
+from pathlib import Path
 
 import prefect
 from prefect import Parameter
 from prefect.engine import signals
 from prefect.engine.executors import LocalDaskExecutor
+from prefect.tasks.prefect import StartFlowRun
 
 from fetchers.s3 import NoaaGfsS3
 
@@ -14,9 +16,13 @@ logger = logging.getLogger(__name__)
 
 
 settings = {
-    'timesteps': [3, 6, 9, 12, 15, 18],
+    'timesteps': [3, 6],
     'download_dir': '/tmp/plop'
 }
+
+project_name = "gfs-fetcher"
+flow_download_name = "aws-gfs-download"
+flow_processing_name = "gfs-processing"
 
 
 ########################################################################
@@ -69,7 +75,7 @@ def check_timestep_availability(daterun_info: dict, timestep: str):
 
 
 @prefect.task(log_stdout=True)
-def download_timestep(timestep_info: dict, download_dir: str):
+def download_timestep(timestep_info: dict, download_dir: str) -> Path:
     """
     Download a specific timestep file
 
@@ -79,16 +85,20 @@ def download_timestep(timestep_info: dict, download_dir: str):
     """
     print(f"Downloading file {timestep_info} to {download_dir} ...")
     s3api = NoaaGfsS3()
-    s3api.download(
+    return s3api.download(
         object_key=s3api.get_timestep_key(**timestep_info),
         destination_dir=download_dir
     )
+
+@prefect.task
+def post_processing(fp: str):
+    print(f"Do some post-processing on {fp} ... ")
 
 
 ##########################################################################
 
 
-with prefect.Flow(name="aws-gfs-download") as flow:
+with prefect.Flow(name=flow_download_name) as flow_download:
     date_day = prefect.Parameter("date_day", default="20201215")
     run = prefect.Parameter("run", default=0)
 
@@ -101,20 +111,32 @@ with prefect.Flow(name="aws-gfs-download") as flow:
             daterun_info=daterun_avail, timestep=timestep,
             task_args={'name': f'timestep_{timestep}_check_availability'}
         )
-        download_timestep(
+        fp = download_timestep(
             timestep_info=timestep_avail,
             download_dir=settings['download_dir'],
             task_args={'name': f'timestep_{timestep}_download'}
         )
 
 
+with prefect.Flow(name="gfs-processing") as flow_processing:
+    fp = prefect.Parameter("fp", default=None)
+    t = post_processing(fp)
+
+
 # For choosing the right executor,
 # see https://docs.prefect.io/orchestration/flow_config/executors.html#choosing-an-executor
-flow.executor = LocalDaskExecutor(
+flow_download.executor = LocalDaskExecutor(
     scheduler="threads",
     num_workers=16
 )
 
+
+##########################################################################
+flowrun_download = StartFlowRun(flow_name=flow_download_name, project_name=project_name)
+flowrun_processing = StartFlowRun(flow_name=flow_processing_name, project_name=project_name)
+
+with prefect.Flow("parent") as flow_parent:
+    flowrun_processing(upstream_tasks=[flowrun_download])
 
 ##########################################################################
 
@@ -126,10 +148,11 @@ if __name__ == "__main__":
 
     if cmd == "register":
         os.environ['PREFECT__SERVER__HOST'] = 'linux'
-        registration = flow.register("gfs-fetcher")
-        print(registration)
+        for flow in flow_download, flow_processing, flow_parent:
+            registration = flow.register(project_name)
+            print(registration)
     elif cmd == "run":
-        flow.run()
+        flow_download.run()
         #flow.visualize()
     elif cmd == "trigger":
         client = prefect.Client()
