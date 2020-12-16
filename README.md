@@ -1,6 +1,6 @@
 # Fetching with Prefect
 
-Current target is to download [NOAA GFS from AWS S3](https://registry.opendata.aws/noaa-gfs-bdp-pds/), using [Prefect machinery](prefect.io).
+Current target is to download [NOAA GFS from AWS S3](https://registry.opendata.aws/noaa-gfs-bdp-pds/), using [Prefect machinery](https://prefect.io).
 
 
 ## Getting started
