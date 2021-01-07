@@ -7,7 +7,7 @@ from pathlib import Path
 import prefect
 from prefect import Parameter
 from prefect.engine import signals
-from prefect.engine.executors import LocalDaskExecutor
+from prefect.executors import LocalDaskExecutor
 from prefect.tasks.prefect import StartFlowRun
 
 from fetchers.s3 import NoaaGfsS3
@@ -99,6 +99,11 @@ def post_processing(fp: str):
 
 
 with prefect.Flow(name=flow_download_name) as flow_download:
+    """
+    A Flow for downloading data from AWS:
+        - check if a run is available
+        - download according to config
+    """
     date_day = prefect.Parameter("date_day", default="20201215")
     run = prefect.Parameter("run", default=0)
 
@@ -119,6 +124,9 @@ with prefect.Flow(name=flow_download_name) as flow_download:
 
 
 with prefect.Flow(name="gfs-processing") as flow_processing:
+    """
+    A Flow for processing gfs data once received
+    """
     fp = prefect.Parameter("fp", default=None)
     t = post_processing(fp)
 
@@ -132,10 +140,15 @@ flow_download.executor = LocalDaskExecutor(
 
 
 ##########################################################################
-flowrun_download = StartFlowRun(flow_name=flow_download_name, project_name=project_name)
-flowrun_processing = StartFlowRun(flow_name=flow_processing_name, project_name=project_name)
+flowrun_download = StartFlowRun(flow_name=flow_download_name, project_name=project_name, wait=True)
+flowrun_processing = StartFlowRun(flow_name=flow_processing_name, project_name=project_name, wait=True)
 
 with prefect.Flow("parent") as flow_parent:
+    """
+    Dependencies between flows:
+        - download gfs data
+        - then run data processing
+    """
     flowrun_processing(upstream_tasks=[flowrun_download])
 
 ##########################################################################
@@ -152,7 +165,8 @@ if __name__ == "__main__":
             registration = flow.register(project_name)
             print(registration)
     elif cmd == "run":
-        flow_download.run()
+        #flow_download.run()
+        flow_parent.run()
         #flow.visualize()
     elif cmd == "trigger":
         client = prefect.Client()
@@ -169,4 +183,6 @@ if __name__ == "__main__":
         })
         print(f"A new FlowRun has been triggered")
         print(f"Go check it on http://linux:8080/flow-run/{r}")
+    elif cmd == "q":
+        import q; q.d()
 
