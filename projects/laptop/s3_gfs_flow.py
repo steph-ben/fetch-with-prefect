@@ -13,7 +13,7 @@ prefect_project_name = "laptop-gfs-project"
 settings = {
     'flow_name': "laptop-gfs-download",
     'timesteps': [0, 1, 2, 3, 4, 5, 6],
-    'max_concurrent_download': 1,
+    'max_concurrent_download': 5,
     'download_dir': "/tmp/laptop/s3/gfs"
 }
 
@@ -21,16 +21,25 @@ settings = {
 def main(cmd):
     # Create a prefect's flow object with some configuration
     flow_nwp_00 = create_flow_download(run=00, **settings)
+    settings['max_concurrent_download'] = 5
     flow_nwp_12 = create_flow_download(run=12, **settings)
 
     if cmd in ("register", "trigger"):
         # Ensure the flow is well registered in prefect server
-        os.environ['PREFECT__SERVER__HOST'] = 'linux'
+        #os.environ['PREFECT__SERVER__HOST'] = 'kibana.dev'
         for flow in flow_nwp_00, flow_nwp_12:
             r = flow.register(project_name=prefect_project_name)
             print(r)
 
-    elif cmd == "trigger":
+        # for flow in flow_nwp_00, flow_nwp_12:
+        #     from prefect.schedules import Schedule
+        #     from prefect.schedules.clocks import CronClock
+        #     schedule = Schedule(clocks=[CronClock(f"0 * * * *")])
+        #     flow.schedule = schedule
+        #     r = flow.register(project_name=prefect_project_name)
+        #     print(r)
+
+    if cmd == "trigger":
         # Trigger the flow manually
         for flow in flow_nwp_00, flow_nwp_12:
             trigger_prefect_flow(
@@ -38,7 +47,7 @@ def main(cmd):
                 run_name=f"{flow.name}-manually_triggered",
             )
 
-    elif cmd == "run":
+    if cmd == "run":
         # Run a download from current process
         flow_nwp_00.run()
 

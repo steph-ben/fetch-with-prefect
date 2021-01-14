@@ -2,14 +2,47 @@
 
 Current target is to download [NOAA GFS from AWS S3](https://registry.opendata.aws/noaa-gfs-bdp-pds/), using [Prefect machinery](https://prefect.io).
 
+##
 
+```
+dnf install epel-release -y
+yum install -y screen fail2ban git wget
+
+```
 ## Getting started
+
+* Install conda & env
+  
+```shell
+# Conda
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh
+sh ./Miniconda3-latest-Linux-x86_64.sh
+conda config --set auto_activate_base false
+ 
+# Create env
+conda create -n prefect
+conda activate prefect
+conda install -c conda-forge prefect
+```
+
+* Docker (for running prefect server only)
+  
+```shell
+# Cf. https://docs.docker.com/engine/install/centos/
+sudo yum install -y yum-utils
+sudo yum-config-manager --add-repo https://download.docker.com/linux/centos/docker-ce.repo
+sudo yum install docker-ce docker-ce-cli containerd.io -y
+sudo systemctl enable --now docker
+sudo docker run hello-world
+sudo usermod -Ga docker <<you_user>>
+```
 
 * Python reqs
 
 ```shell
-virtualenv ve -p python3
+git clone https://github.com/steph-ben/fetch-with-prefect.git
 pip install -r requirements.txt
+python setup.py develop
 ```
 
 
