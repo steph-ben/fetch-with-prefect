@@ -36,5 +36,10 @@ def trigger_prefect_flow(flow_name: str, **kwargs):
     client = prefect.Client()
     r = client.create_flow_run(flow_id=flow_id, **kwargs)
 
+    server_url = "{}:{}".format(
+        prefect.context.config.server.host,
+        prefect.context.config.server.port
+    )
+
     print(f"A new FlowRun has been triggered")
-    print(f"Go check it on http://linux:8080/flow-run/{r}")
+    print(f"Go check it on http://{server_url}/flow-run/{r}")

@@ -23,7 +23,7 @@ from .core import NoaaGfsS3
     log_stdout=True,
     max_retries=5, retry_delay=datetime.timedelta(minutes=1)
 )
-def check_run_availability(date_day: Parameter, run: Parameter):
+def check_run_availability(run: Parameter, date_day: Parameter = None):
     """
     Check if a GFS run is available for a given day
 
@@ -31,6 +31,9 @@ def check_run_availability(date_day: Parameter, run: Parameter):
     :param run:
     :return:
     """
+    if date_day is None:
+        date_day = prefect.context.scheduled_start_time.strftime("%Y%m%d")
+
     print(f"{date_day} / {run} : Checking run availability ...")
     s3api = NoaaGfsS3()
     r = s3api.filter(Prefix=s3api.get_daterun_prefix(str(date_day), str(run))).limit(count=1)
@@ -94,6 +97,7 @@ def create_flow_download(
         run: int = 0,
         timesteps: list = [3, 6],
         max_concurrent_download: int = 5,
+        schedule: str = "",
         download_dir: str = '/tmp/plop'):
     """
     Create a prefect flow for downloading GFS
@@ -113,12 +117,9 @@ def create_flow_download(
             - check if a run is available
             - download according to config
         """
-        date_day = prefect.Parameter("date_day", default="20201215")
         param_run = prefect.Parameter("run", default=run)
 
-        daterun_avail = check_run_availability(
-            date_day=date_day, run=param_run
-        )
+        daterun_avail = check_run_availability(run=param_run)
 
         for timestep in timesteps:
             timestep_avail = check_timestep_availability(
