@@ -4,7 +4,6 @@ A quick demo of three little shell tasks
 import sys
 from pathlib import Path
 
-import prefect
 from prefect import Flow, task
 from prefect.schedules import Schedule
 from prefect.schedules.clocks import CronClock
