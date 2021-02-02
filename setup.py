@@ -8,5 +8,8 @@ setup(
     author_email = "stephane.benchimol@gmail.com",
     description="An demonstration of how to fetch data using prefect",
     url="https://github.com/steph-ben/fetch-with-prefect",
-    packages=['fetchers'],
+    packages=[
+        'fetchers',
+        'fetchers.s3',
+    ],
 )
