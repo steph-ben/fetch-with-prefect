@@ -1,5 +1,7 @@
 from setuptools import setup
 
+with open('requirements.txt') as f:
+    requirements = f.read().splitlines()
 
 setup(
     name="fetch-with-prefect",
@@ -12,4 +14,5 @@ setup(
         'fetchers',
         'fetchers.s3',
     ],
+    install_requires=requirements,
 )
